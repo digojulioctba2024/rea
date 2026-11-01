@@ -1,0 +1,90 @@
+# REA isolated sandbox
+#
+#   dev  : live source mount + network, for building and running the test suite
+#   lab  : immutable build, no network, read-only root FS, for untrusted samples
+#   web  : same as lab but with network, for website/runtime analysis
+#
+# Usage: .\scripts\sandbox.ps1 <command>   (see sandbox/README.md)
+
+name: rea-sandbox
+
+x-build: &build
+  context: ..
+  dockerfile: sandbox/Dockerfile
+  target: build
+
+x-service: &service
+  image: rea-sandbox:local
+  build: *build
+  init: true
+  security_opt:
+    - no-new-privileges:true
+  environment:
+    HUSKY: "0"
+    NPM_CONFIG_UPDATE_NOTIFIER: "false"
+    NPM_CONFIG_FUND: "false"
+
+services:
+  dev:
+    <<: *service
+    working_dir: /workspace
+    stdin_open: true
+    tty: true
+    command: ["bash"]
+    environment:
+      HUSKY: "0"
+      NPM_CONFIG_UPDATE_NOTIFIER: "false"
+      NPM_CONFIG_FUND: "false"
+      REA_SEED_NODE_MODULES: "1"
+    volumes:
+      - ..:/workspace
+      - rea_node_modules:/workspace/node_modules
+      - rea_npm_cache:/home/node/.npm
+    mem_limit: 6g
+    cpus: 6
+    pids_limit: 1024
+
+  lab:
+    <<: *service
+    user: "1000:1000"
+    working_dir: /out
+    read_only: true
+    network_mode: none
+    cap_drop:
+      - ALL
+    environment:
+      HOME: /tmp/rea-home
+      HUSKY: "0"
+    tmpfs:
+      - /tmp:size=512m,mode=1777
+      - /opt/rea/.cache:size=256m,mode=1777
+    volumes:
+      - ./workspace/samples:/samples:ro
+      - ./workspace/out:/out:rw
+    mem_limit: 3g
+    cpus: 4
+    pids_limit: 512
+    command: ["rea", "--help"]
+
+  web:
+    <<: *service
+    user: "1000:1000"
+    working_dir: /out
+    cap_drop:
+      - ALL
+    environment:
+      HOME: /tmp/rea-home
+      HUSKY: "0"
+    tmpfs:
+      - /tmp:size=512m,mode=1777
+    volumes:
+      - ./workspace/samples:/samples:ro
+      - ./workspace/out:/out:rw
+    mem_limit: 3g
+    cpus: 4
+    pids_limit: 512
+    command: ["rea", "--help"]
+
+volumes:
+  rea_node_modules:
+  rea_npm_cache:

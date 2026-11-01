@@ -1,0 +1,5 @@
+# Samples are mounted read-only at /samples inside the lab.
+*
+!.gitignore
+!.gitkeep
+!README.md

@@ -1,0 +1,15 @@
+# Keep the Docker build context small and Linux-clean.
+.git
+.gitmodules
+.github
+.tools
+.cache
+.turbo
+.sandbox
+dist
+node_modules
+skills
+website
+sandbox/workspace
+sandbox/.cache
+*.log

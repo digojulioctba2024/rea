@@ -1,0 +1,5 @@
+# Results are mounted writable at /out inside the lab.
+*
+!.gitignore
+!.gitkeep
+!README.md
