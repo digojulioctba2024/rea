@@ -62,7 +62,7 @@ exata do `.nvmrc` (24.22.1) para `.tools/`.
 ## Início rápido
 
 ```powershell
-cd C:\Users\Rodrigo\Documents\OpenCode\rea
+cd <caminho-do-seu-clone>\rea
 
 # 1) Toolchain do host + build + imagem Docker
 .\sandbox\scripts\sandbox.ps1 setup
@@ -132,9 +132,9 @@ Consulte `sandbox/workspace/README.md` para as regras de montagem.
 No PowerShell 5.1, um `--` isolado na linha de comando do script é ambíguo;
 por isso existem `test` e `host-test`, que já inserem o separador.
 
-O código em `C:\Users\Rodrigo\Documents\OpenCode\rea` é montado em `/workspace`,
-então edições no Windows aparecem imediatamente no container. O `node_modules`
-do container fica em um volume Linux separado e não colide com o do host.
+O diretório do clone é montado em `/workspace`, então edições no Windows
+aparecem imediatamente no container. O `node_modules` do container fica em um
+volume Linux separado e não colide com o do host.
 
 ## MCP (opcional)
 
