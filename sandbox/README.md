@@ -71,7 +71,7 @@ cd C:\Users\Rodrigo\Documents\OpenCode\rea
 .\sandbox\scripts\sandbox.ps1 shell
 
 # 3) Testes (dentro ou fora do shell)
-.\sandbox\scripts\sandbox.ps1 exec npm run test:local -- tests/domain
+.\sandbox\scripts\sandbox.ps1 test tests/domain
 
 # 4) CLI nativa do Windows
 .\sandbox\scripts\sandbox.ps1 host --help
@@ -90,10 +90,12 @@ setup      Toolchain do host + imagem Docker
 build      Reconstrói a imagem
 shell      bash interativo no container dev
 exec CMD   Executa um comando no container dev
+test PATH  Roda npm run test:local no container dev (sem --)
 lab CMD    REA offline contra /samples, gravando em /out
 web CMD    REA com rede (sites, runtime)
 host CMD   CLI REA compilada no host
 host-npm   npm/npx no host com o Node local
+host-test  Roda npm run test:local no host (sem --)
 status     Containers, imagem e uso de disco
 down       Remove os containers
 reset      Remove containers e volumes (pede confirmação)
@@ -123,9 +125,12 @@ Consulte `sandbox/workspace/README.md` para as regras de montagem.
 ```powershell
 .\sandbox\scripts\sandbox.ps1 exec npm run build:cached
 .\sandbox\scripts\sandbox.ps1 exec npm run check:fast
-.\sandbox\scripts\sandbox.ps1 exec npm run test:local -- tests/domain
+.\sandbox\scripts\sandbox.ps1 test tests/domain
 .\sandbox\scripts\sandbox.ps1 exec npm run test:python
 ```
+
+No PowerShell 5.1, um `--` isolado na linha de comando do script é ambíguo;
+por isso existem `test` e `host-test`, que já inserem o separador.
 
 O código em `C:\Users\Rodrigo\Documents\OpenCode\rea` é montado em `/workspace`,
 então edições no Windows aparecem imediatamente no container. O `node_modules`

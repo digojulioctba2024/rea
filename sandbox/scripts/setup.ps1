@@ -24,6 +24,19 @@ $ErrorActionPreference = "Stop"
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path
 Set-Location $repoRoot
 
+function Invoke-Native {
+  param([string]$Label, [scriptblock]$Command)
+
+  # npm and node write progress/warnings to stderr. Stop mode would turn that
+  # into a NativeCommandError even when the command succeeds.
+  $previous = $ErrorActionPreference
+  $ErrorActionPreference = "Continue"
+  & $Command
+  $code = $LASTEXITCODE
+  $ErrorActionPreference = $previous
+  if ($code -ne 0) { throw "$Label failed with exit code $code" }
+}
+
 $nodeVersion = (Get-Content (Join-Path $repoRoot ".nvmrc") -Raw).Trim()
 if (-not $nodeVersion) { throw "Could not read .nvmrc" }
 
@@ -68,7 +81,7 @@ if (-not (Test-Path $manifest) -or -not (Test-Path $addon)) {
 
   if (Test-Path $extractDir) { Remove-Item $extractDir -Recurse -Force }
   New-Item -ItemType Directory -Force -Path $extractDir | Out-Null
-  tar -xzf $tgz -C $extractDir
+  Invoke-Native "native artifact extraction" { tar -xzf $tgz -C $extractDir }
 
   New-Item -ItemType Directory -Force -Path $artifactDir | Out-Null
   Copy-Item (Join-Path $extractDir "package\native\windows\build\manifest.json") $manifest -Force
@@ -79,19 +92,16 @@ if (-not (Test-Path $manifest) -or -not (Test-Path $addon)) {
 $needsInstall = $Force -or -not (Test-Path (Join-Path $repoRoot "node_modules\.package-lock.json"))
 if ($needsInstall) {
   Write-Host "[setup] Installing locked dependencies (npm ci)..."
-  & npm.cmd ci --no-audit --no-fund
-  if ($LASTEXITCODE -ne 0) { throw "npm ci failed with exit code $LASTEXITCODE" }
+  Invoke-Native "npm ci" { & npm.cmd ci --no-audit --no-fund }
 }
 
 if (-not $SkipBuild) {
   Write-Host "[setup] Building REA..."
-  & npm.cmd run build:cached
-  if ($LASTEXITCODE -ne 0) { throw "npm run build:cached failed with exit code $LASTEXITCODE" }
+  Invoke-Native "npm run build:cached" { & npm.cmd run build:cached }
 }
 
 Write-Host "[setup] Verifying CLI..."
-& node scripts/rea.mjs --version
-if ($LASTEXITCODE -ne 0) { throw "REA CLI failed to start (exit $LASTEXITCODE)" }
+Invoke-Native "REA CLI" { & node scripts/rea.mjs --version }
 
 Write-Host ""
 Write-Host "Host toolchain ready."

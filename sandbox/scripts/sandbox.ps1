@@ -5,17 +5,17 @@
 .EXAMPLES
   .\scripts\sandbox.ps1 setup
   .\scripts\sandbox.ps1 shell
-  .\scripts\sandbox.ps1 exec npm run test:local -- tests/domain
+  .\scripts\sandbox.ps1 test tests/domain
   .\scripts\sandbox.ps1 lab analyze-javascript-application /samples/app --json
   .\scripts\sandbox.ps1 web analyze-website https://example.com --json
   .\scripts\sandbox.ps1 host --help
-  .\scripts\sandbox.ps1 host-npm run test:local -- tests/
+  .\scripts\sandbox.ps1 host-test tests/
   .\scripts\sandbox.ps1 reset
 #>
 [CmdletBinding()]
 param(
   [Parameter(Position = 0)]
-  [ValidateSet("setup", "build", "shell", "exec", "lab", "web", "host", "host-npm", "down", "status", "reset", "help")]
+  [ValidateSet("setup", "build", "shell", "exec", "test", "lab", "web", "host", "host-npm", "host-test", "down", "status", "reset", "help")]
   [string]$Command = "help",
 
   [Parameter(ValueFromRemainingArguments = $true)]
@@ -59,8 +59,14 @@ function Ensure-Docker {
 }
 
 function Invoke-Compose {
+  # Docker writes progress ("Creating", "Started") to stderr. With
+  # ErrorActionPreference=Stop that would surface as a NativeCommandError.
+  $previous = $ErrorActionPreference
+  $ErrorActionPreference = "Continue"
   & docker compose -f $composeFile @args
-  if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+  $code = $LASTEXITCODE
+  $ErrorActionPreference = $previous
+  if ($code -ne 0) { exit $code }
 }
 
 function Show-Help {
@@ -70,11 +76,13 @@ REA sandbox commands
   setup      Bootstrap the host toolchain and build the Docker image
   build      Build/refresh the Docker image (rea-sandbox:local)
   shell      Interactive bash inside the dev container (live source mount)
-  exec CMD   Run a command in the dev container, e.g. exec npm run test:local -- tests/
+  exec CMD   Run a command in the dev container, e.g. exec npm run build:cached
+  test PATH  Run npm run test:local in the dev container (no -- needed)
   lab CMD    Run REA offline against /samples (writes to /out), no network
   web CMD    Run REA with network access (websites, runtime analysis)
   host CMD   Run the host-built REA CLI with the project-local Node toolchain
   host-npm   Run npm/npx on the host with the project-local toolchain
+  host-test  Run npm run test:local on the host (no -- needed)
   status     Show containers, image and Docker disk usage
   down       Stop and remove the sandbox containers
   reset      Remove containers AND named volumes (node_modules cache)
@@ -87,9 +95,10 @@ Examples
   .\sandbox.ps1 build
   .\sandbox.ps1 shell
   .\sandbox.ps1 exec npm run build:cached
-  .\sandbox.ps1 exec npm run test:local -- tests/domain
+  .\sandbox.ps1 test tests/domain
   .\sandbox.ps1 lab analyze-javascript-application /samples/app.asar --json
   .\sandbox.ps1 host --help
+  .\sandbox.ps1 host-test src/config.test.ts
 "@ | Write-Host
 }
 
@@ -124,6 +133,15 @@ switch ($Command) {
     }
   }
 
+  "test" {
+    Ensure-Docker
+    if ($Rest.Count -eq 0) {
+      Invoke-Compose run --rm dev npm run test:local
+    } else {
+      Invoke-Compose run --rm dev npm run test:local "--" @Rest
+    }
+  }
+
   "lab" {
     Ensure-Docker
     if ($Rest.Count -eq 0) {
@@ -144,22 +162,44 @@ switch ($Command) {
 
   "host" {
     . (Join-Path $PSScriptRoot "env.ps1")
+    $previous = $ErrorActionPreference
+    $ErrorActionPreference = "Continue"
     if ($Rest.Count -eq 0) {
       & node scripts/rea.mjs --help
     } else {
       & node scripts/rea.mjs @Rest
     }
-    exit $LASTEXITCODE
+    $code = $LASTEXITCODE
+    $ErrorActionPreference = $previous
+    exit $code
   }
 
   "host-npm" {
     . (Join-Path $PSScriptRoot "env.ps1")
+    $previous = $ErrorActionPreference
+    $ErrorActionPreference = "Continue"
     if ($Rest.Count -eq 0) {
       & npm.cmd --version
     } else {
       & npm.cmd @Rest
     }
-    exit $LASTEXITCODE
+    $code = $LASTEXITCODE
+    $ErrorActionPreference = $previous
+    exit $code
+  }
+
+  "host-test" {
+    . (Join-Path $PSScriptRoot "env.ps1")
+    $previous = $ErrorActionPreference
+    $ErrorActionPreference = "Continue"
+    if ($Rest.Count -eq 0) {
+      & npm.cmd run test:local
+    } else {
+      & npm.cmd run test:local "--" @Rest
+    }
+    $code = $LASTEXITCODE
+    $ErrorActionPreference = $previous
+    exit $code
   }
 
   "status" {
