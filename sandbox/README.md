@@ -194,6 +194,13 @@ docker image prune -f
 ```
 
 O `reset` remove o volume de `node_modules`; o próximo `setup`/`shell` o recria.
+Não rode `docker system prune -a` sem revisar: ele remove imagens de outros
+projetos.
+
+Esta máquina terminou o setup com ~2,9 GB livres. O Docker Desktop mantém os
+dados em um VHDX do WSL2 e nem sempre devolve ao Windows o espaço liberado
+dentro do Docker. Se precisar de mais espaço, remova imagens não usadas pelo
+painel do Docker Desktop ou compacte o VHDX com o Docker parado.
 
 **`REA Windows native controls are unavailable`**
 
